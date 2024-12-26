@@ -29,3 +29,22 @@ Most notably is first of the bit-5's in the first byte.
 
 IHDR Chunk (PNG Header)
 =======================
+The IHDR chunk must appear FIRST.  It contains:
+    Width (in pixels):              4 bytes
+    Height (in pixels):             4 bytes
+    Bit depth:                      1 byte
+    Color type:                     1 byte
+    Compression method:             1 byte
+    Filter method:                  1 byte
+    Interlace method:               1 byte
+
+- Bit depth is number of bits per sample (1, 2, 4, 8, 16).
+- Color type specifies whether it's grayscale or RGB or RGBA.
+
+IDAT Image Data
+===============
+To read image data:
+1) Decompress using decompression specified by IHDR chunk.
+2) De-filter accounding to the filtering method specified in IHDR.
+3) Recreate scanlines.
+???
