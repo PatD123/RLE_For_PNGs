@@ -48,3 +48,10 @@ To read image data:
 2) De-filter accounding to the filtering method specified in IHDR.
 3) Recreate scanlines.
 ???
+
+
+PPM
+===
+Starts with a magic number most likely P3 or P6
+Converts from P6 (raw binary to human readable text P3) : https://thomasebsmith.github.io/ppm-converter/
+Can visualize P3 PPMs : https://0xc0de.fr/webppm/
