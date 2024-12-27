@@ -54,23 +54,38 @@ fn png_to_ppm(mut reader: png::Reader<File>) -> Result<(), std::io::Error>{
     Ok(())
 }
 
+fn pngrle(){
+
+}
+
 fn main() -> Result<(), png::EncodingError>{
 
-    let decoder = png::Decoder::new(File::open("test_images/happy.png").unwrap());
+    let decoder = png::Decoder::new(File::open("test_images/turtle.png").unwrap());
     let mut reader = decoder.read_info().unwrap();
-    let mut buf = vec![0; reader.output_buffer_size()];
-    let info = reader.next_frame(&mut buf).unwrap();
-    let bytes = &buf[..info.buffer_size()];
 
-    // Rewrite to a new png
-    let path = Path::new("output_images/happy.png");
-    let file = File::create(path).unwrap();
-    let ref mut w = BufWriter::new(file);
+    png_to_ppm(reader);
 
-    let info = reader.info().clone();
-    let encoder = png::Encoder::with_info(w, info)?;
-    let mut writer = encoder.write_header().unwrap();
-    writer.write_image_data(bytes);
+    // TODO
+    // Seems like with the commented code very below, we can decode a png, extract all the metadata and the idat chunks
+    // then encode them again to get a valid PNG. However, we can't rewrite all the metadata, and then not write all of
+    // our data, and still manage to use the decoder.read_info() function.
+
+    // Best soln I have is to write all the headers into a temp file with everything the same except the IDAT chunks.
+    // The new IDAT chunks should reflect RLE. 
+    // To re-encode the file, we open the temp file, expand all the rle's and write into a new png file.
+
+    // let mut buf = vec![0; reader.output_buffer_size()];
+    // let info = reader.next_frame(&mut buf).unwrap();
+    // let bytes = &buf[..info.buffer_size()];
+
+    // // Rewrite to a new png
+    // let file = File::options().write(true).create(true).open("output_images/happy.png").unwrap();
+    // let ref mut w = BufWriter::new(file);
+
+    // let info = reader.info().clone();
+    // let encoder = png::Encoder::with_info(w, info)?;
+    // let mut writer = encoder.write_header().unwrap();
+    // writer.write_image_data(&bytes[0..1]);
 
     Ok(())
 }
