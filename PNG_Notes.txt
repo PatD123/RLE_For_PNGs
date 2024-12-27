@@ -41,6 +41,26 @@ The IHDR chunk must appear FIRST.  It contains:
 - Bit depth is number of bits per sample (1, 2, 4, 8, 16).
 - Color type specifies whether it's grayscale or RGB or RGBA.
 
+On reader.info you get:
+- width
+- height
+- bit_depth
+- color_type
+- interlaced
+- sbit
+- trns 
+- pixel_dims
+- palette
+- gama_chunk
+- chrm_chunk
+- bkgd
+- frame_control
+- animation_control
+- Compression
+- source_gamma
+- source_chromaticities
+- red, gree, blue, srgb
+
 IDAT Image Data
 ===============
 To read image data:

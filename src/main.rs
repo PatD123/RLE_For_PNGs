@@ -1,5 +1,7 @@
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
+use std::io::BufWriter;
 
 fn write_to_ppm(data: &[u8]) -> Result<(), std::io::Error> {
     let mut f = File::options().append(true).open("test_images/test.ppm")?;
@@ -35,12 +37,12 @@ fn png_to_ppm(mut reader: png::Reader<File>) -> Result<(), std::io::Error>{
         f.write(s.as_bytes());
     }
 
-    while true {
+    loop {
         let res = reader.next_row();
         match res {
             Ok(Some(r)) => {
                 match write_to_ppm(r.data()) {
-                    Ok(o) => println!("Converted a row of png to ppm"),
+                    Ok(_) => println!("Converted a row of png to ppm"),
                     Err(e) => println!("{}", e),
                 }
             },
@@ -52,12 +54,23 @@ fn png_to_ppm(mut reader: png::Reader<File>) -> Result<(), std::io::Error>{
     Ok(())
 }
 
-fn main() {
-    // The decoder is a build for reader and can be used to set various decoding options
-    // via `Transformations`. The default output transformation is `Transformations::IDENTITY`.
-    let decoder = png::Decoder::new(File::open("test_images/turtle.png").unwrap());
+fn main() -> Result<(), png::EncodingError>{
 
+    let decoder = png::Decoder::new(File::open("test_images/happy.png").unwrap());
     let mut reader = decoder.read_info().unwrap();
+    let mut buf = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut buf).unwrap();
+    let bytes = &buf[..info.buffer_size()];
 
-    png_to_ppm(reader);
+    // Rewrite to a new png
+    let path = Path::new("output_images/happy.png");
+    let file = File::create(path).unwrap();
+    let ref mut w = BufWriter::new(file);
+
+    let info = reader.info().clone();
+    let encoder = png::Encoder::with_info(w, info)?;
+    let mut writer = encoder.write_header().unwrap();
+    writer.write_image_data(bytes);
+
+    Ok(())
 }
