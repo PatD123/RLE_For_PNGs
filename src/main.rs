@@ -63,8 +63,6 @@ fn main() -> Result<(), png::EncodingError>{
     let decoder = png::Decoder::new(File::open("test_images/turtle.png").unwrap());
     let mut reader = decoder.read_info().unwrap();
 
-    png_to_ppm(reader);
-
     // TODO
     // Seems like with the commented code very below, we can decode a png, extract all the metadata and the idat chunks
     // then encode them again to get a valid PNG. However, we can't rewrite all the metadata, and then not write all of
