@@ -2,7 +2,7 @@ About the PNG
 =============
 PNG file is a PNG + series_of_chunks.
 
-First 8 bytes of any PNG: 137 80 78 71 13 10 26 10
+First 8 bytes of any PNG: 137 80 78 71 13 10 26 10 (8 bytes)
                           ========================
 - Says that there is a single PNG image, beginning with an
     1) IHDR chunk
@@ -30,13 +30,20 @@ Most notably is first of the bit-5's in the first byte.
 IHDR Chunk (PNG Header)
 =======================
 The IHDR chunk must appear FIRST.  It contains:
-    Width (in pixels):              4 bytes
-    Height (in pixels):             4 bytes
-    Bit depth:                      1 byte
-    Color type:                     1 byte
-    Compression method:             1 byte
-    Filter method:                  1 byte
-    Interlace method:               1 byte
+- 4 bytes to start saying we have 13 bytes for the IHDR
+- 4 bytes for IHDR ID: 	0x49484452 = 73 72 68 82 (per byte in dec) **
+- Then the following:
+        Width (in pixels):              4 bytes
+        Height (in pixels):             4 bytes
+        Bit depth:                      1 byte
+        Color type:                     1 byte
+        Compression method:             1 byte
+        Filter method:                  1 byte
+        Interlace method:               1 byte
+                        content total:  13 bytes
+- 4 bytes for CRC
+** TOTAL = 4 + 4 + 13 + 4 = 25 bytes (0 - 24)
+** Next chunk offset = bytes[25];
 
 - Bit depth is number of bits per sample (1, 2, 4, 8, 16).
 - Color type specifies whether it's grayscale or RGB or RGBA.

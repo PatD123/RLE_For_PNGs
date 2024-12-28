@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 png = "0.17.16"
+needle = "0.1.1"

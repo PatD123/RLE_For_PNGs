@@ -1,7 +1,11 @@
 use std::fs::File;
+use std::fs;
 use std::io::Write;
 use std::path::Path;
 use std::io::BufWriter;
+use needle::BoyerMoore;
+use std::env;
+
 
 fn write_to_ppm(data: &[u8]) -> Result<(), std::io::Error> {
     let mut f = File::options().append(true).open("test_images/test.ppm")?;
@@ -56,19 +60,27 @@ fn png_to_ppm(mut reader: png::Reader<File>) -> Result<(), std::io::Error>{
 
 fn pngrle(img_info: png::Info, data: &[u8]) -> Result<(), png::EncodingError>{
     // Rewrite to a new .pnle (for png rle)!
-    let file = File::options().write(true).create(true).open("output_images/test.pnle").unwrap();
+    let file = File::options().write(true).create(true).open("output_images/turtle.pnle").unwrap();
     let ref mut w = BufWriter::new(file);
 
     let encoder = png::Encoder::with_info(w, img_info)?;
     let mut writer = encoder.write_header().unwrap();
-    writer.write_image_data(data);
+    // writer.write_image_data(data);
+    writer.write_image_data(&data[0..5000]);
+    // writer.write_image_data(b"\x00\x00\x00\x00\x49\x45\x4E\x44\xAE\x42\x60\x82");
 
     Ok(())
 }
 
 fn main() {
+    // env::set_var("RUST_BACKTRACE", "full");
 
-    let decoder = png::Decoder::new(File::open("test_images/turtle.png").unwrap());
+    // check_bytes();
+    // return;
+
+    // let mut decoder = png::Decoder::new(File::open("test_images/turtle.png").unwrap());
+    let mut decoder = png::Decoder::new(File::open("output_images/turtle.pnle").unwrap());
+    decoder.ignore_checksums(true);
     let mut reader = decoder.read_info().unwrap();
 
     // TODO
@@ -86,4 +98,18 @@ fn main() {
     let info = reader.info().clone();
 
     pngrle(info, bytes);
+    // println!("{:?}", &bytes[0..5]);
+}
+
+// Util function to check if hard-coded byte
+// offsets seem to be correct.
+fn check_bytes(){
+    let data = fs::read("output_images/test.pnle").expect("Couldn't open file");
+    let needle = BoyerMoore::new(&b"\x49\x44\x41\x54"[..]);
+    match needle.find_in(&data).next() {
+        Some(a) => println!("{}", a),
+        None => println!("Couldn't find anything"),
+    }
+    println!("{:?}", &data[175..250]);
+    //[86, 90, 73, 107, 111]
 }
