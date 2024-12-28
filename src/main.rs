@@ -54,11 +54,19 @@ fn png_to_ppm(mut reader: png::Reader<File>) -> Result<(), std::io::Error>{
     Ok(())
 }
 
-fn pngrle(){
+fn pngrle(img_info: png::Info, data: &[u8]) -> Result<(), png::EncodingError>{
+    // Rewrite to a new .pnle (for png rle)!
+    let file = File::options().write(true).create(true).open("output_images/test.pnle").unwrap();
+    let ref mut w = BufWriter::new(file);
 
+    let encoder = png::Encoder::with_info(w, img_info)?;
+    let mut writer = encoder.write_header().unwrap();
+    writer.write_image_data(data);
+
+    Ok(())
 }
 
-fn main() -> Result<(), png::EncodingError>{
+fn main() {
 
     let decoder = png::Decoder::new(File::open("test_images/turtle.png").unwrap());
     let mut reader = decoder.read_info().unwrap();
@@ -72,18 +80,10 @@ fn main() -> Result<(), png::EncodingError>{
     // The new IDAT chunks should reflect RLE. 
     // To re-encode the file, we open the temp file, expand all the rle's and write into a new png file.
 
-    // let mut buf = vec![0; reader.output_buffer_size()];
-    // let info = reader.next_frame(&mut buf).unwrap();
-    // let bytes = &buf[..info.buffer_size()];
+    let mut buf = vec![0; reader.output_buffer_size()];
+    let frame = reader.next_frame(&mut buf).unwrap();
+    let bytes = &buf[..frame.buffer_size()];
+    let info = reader.info().clone();
 
-    // // Rewrite to a new png
-    // let file = File::options().write(true).create(true).open("output_images/happy.png").unwrap();
-    // let ref mut w = BufWriter::new(file);
-
-    // let info = reader.info().clone();
-    // let encoder = png::Encoder::with_info(w, info)?;
-    // let mut writer = encoder.write_header().unwrap();
-    // writer.write_image_data(&bytes[0..1]);
-
-    Ok(())
+    pngrle(info, bytes);
 }
