@@ -59,10 +59,30 @@ fn png_to_ppm(mut reader: png::Reader<File>) -> Result<(), std::io::Error>{
     Ok(())
 }
 
+fn write_to_pnle(file: File, val: u8, cnt: usize){
+    // Write however much it is
+    if cnt == 1 {
+        // If byte is 0, then we do 0 0 1
+        if val == 0 {
+            file.write(b"\0");
+            file.write([val]);
+            file.write(cnt);
+        }
+        // Otherwise we just write the singular byte
+        else {
+            file.write(val);
+        }
+    }
+    else {
+        file.write(b"\0");
+        file.write(val);
+        file.write(cnt);    
+    }
+}
+
 fn pngrle(img_info: png::Info, data: &[u8]) -> Result<(), png::EncodingError>{
     // Rewrite to a new .pnle (for png rle)!
     let file = File::options().append(true).open("output_images/turtle.pnle").unwrap();
-    let ref mut w = BufWriter::new(file);
 
     // let encoder = png::Encoder::with_info(w, img_info)?;
     // let mut writer = encoder.write_header().unwrap();
@@ -70,6 +90,27 @@ fn pngrle(img_info: png::Info, data: &[u8]) -> Result<(), png::EncodingError>{
     // writer.write_image_data(&data[0..data.len()-1]);
 
     // RLE Here
+    let n = img_info.height;
+    let m = img_info.width * 3; // PNG n x m
+    for k in (0..3){ // For each channel
+        for i in (0..n) { // For rows
+            let mut cnt = 1;
+            for j in (k + 3..m).step_by(3) { // For RGB values
+                let j = j as usize;
+
+                // (0 val cnt) - RLE
+                if data[i * m + j] == data[i * m + j - 3] {
+                    // If consecutive r or g or b vals are equal, we incr cnt.
+                    cnt += 1;
+                }
+                else{
+                    write_to_pnle(file, data[i * m + j - 3], cnt);
+                    cnt = 1;
+                }
+            }
+            write_to_pnle(file, data[i * m + m - (3 - k)], cnt);
+        }
+    }
 
     Ok(())
 }
@@ -86,7 +127,7 @@ fn pngrle(img_info: png::Info, data: &[u8]) -> Result<(), png::EncodingError>{
 fn main() {
 
     // Decode the png
-    let mut decoder = png::Decoder::new(File::open("test_images/turtle.png").unwrap());
+    let mut decoder = png::Decoder::new(File::open("test_images/happy.png").unwrap());
     let mut reader = decoder.read_info().unwrap();
 
     // Get all the RGB(A) bytes

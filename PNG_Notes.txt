@@ -82,3 +82,4 @@ PPM
 Starts with a magic number most likely P3 or P6
 Converts from P6 (raw binary to human readable text P3) : https://thomasebsmith.github.io/ppm-converter/
 Can visualize P3 PPMs : https://0xc0de.fr/webppm/
+https://www.youtube.com/watch?v=EFUYNoFRHQI
