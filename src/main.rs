@@ -1,9 +1,6 @@
 use std::fs::File;
 use std::io::Write;
 use std::io::Read;
-use std::io::Seek;
-use std::path::Path;
-use std::io::BufWriter;
 use std::env;
 use std::io;
 
@@ -94,6 +91,7 @@ fn pngrle(img_info: png::Info, data: &[u8]) -> Result<(), png::EncodingError>{
         for i in (0..n) { // For rows
             let mut cnt = 1;
             let offset = i * m;
+
             for j in (k + 3..m).step_by(3) { // For RGB values
                 let j = j as usize;
 
@@ -175,11 +173,13 @@ fn decompress(header: &png::Info) -> io::Result<()>{
     println!("HEADER : {:?}", meta_buf);
 
     // Decompressing RLE encoding @ byte 33
-    let max_size = header.width as usize * header.height as usize * 3;
+    let max_size = header.width as usize * header.height as usize * 3 * 3; // * 3 for RGB * 3 for RLE for all 0
     let mut data_buf = vec![0; max_size];
     // Read into data_buf
-    file.read(&mut data_buf);
-    println!("DATA : {:?}", &data_buf[..10]);
+    let num_bytes = file.read(&mut data_buf)?;
+
+    println!("NUM_BYTES: {}", num_bytes);
+    
     // Starting decompression
     let mut temp_buf = Vec::new();
     let mut i = 0;
