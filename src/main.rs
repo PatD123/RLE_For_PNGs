@@ -8,58 +8,6 @@ use std::io;
 
 mod utils;
 
-
-fn write_to_ppm(data: &[u8]) -> Result<(), std::io::Error> {
-    let mut f = File::options().append(true).open("test_images/test.ppm")?;
-
-    // Writing PPM data
-    for (i, d) in data.iter().enumerate() {
-        let mut s = d.to_string();
-        if i > 0 && i % 3 == 0 {
-            s.push_str("\n");
-        }
-        else{
-            s.push_str(" ");
-        }
-        f.write(s.as_bytes());
-    }
-
-    // End
-    Ok(())
-}
-
-fn png_to_ppm(mut reader: png::Reader<File>) -> Result<(), std::io::Error>{
-
-    let info = reader.info();
-    let width = info.width;
-    let height = info.height;
-
-    let mut f = File::create("test_images/test.ppm")?;
-
-    // Writing PPM P3 header
-    let buf = ["P3\n", & width.to_string(), & format!(" {}\n", height.to_string()), "255\n"];
-    for s in buf.iter() {
-        println!("{:?}", s.as_bytes());
-        f.write(s.as_bytes());
-    }
-
-    loop {
-        let res = reader.next_row();
-        match res {
-            Ok(Some(r)) => {
-                match write_to_ppm(r.data()) {
-                    Ok(_) => println!("Converted a row of png to ppm"),
-                    Err(e) => println!("{}", e),
-                }
-            },
-            _ => break,
-        };
-    }
-    
-
-    Ok(())
-}
-
 fn write_to_pnle(mut file: &File, val: u8, cnt: usize){
     let cnt = cnt as u8;
     // Write however much it is
@@ -125,6 +73,7 @@ fn pngrle(img_info: png::Info, data: &[u8]) -> Result<(), png::EncodingError>{
 // To re-encode the file, we open the temp file, expand all the rle's and write into a new png file.
 fn main() {
 
+    // DECOMPRESSION HERE!!!!
     test();
     return;
 
@@ -151,8 +100,7 @@ fn main() {
     let mut file = File::options().create(true).write(true).open("output_images/turtle.pnle").unwrap();
     file.write(&buf);
 
-    println!("{:?}", &bytes[..20]);
-
+    // Compression and RLE here.
     pngrle(info, bytes);
 }
 
@@ -160,8 +108,8 @@ fn test() {
     // env::set_var("RUST_BACKTRACE", "full");
     let mut decoder = png::Decoder::new(File::open("output_images/turtle.pnle").unwrap());
     let mut header = decoder.read_header_info().unwrap();
-    println!("{:?}", header);
 
+    // Testing decompression
     decompress(header);
 }
 
@@ -212,24 +160,28 @@ fn decompress(header: &png::Info) -> io::Result<()>{
 
     // Merge all RGB values again
     let mut i: usize = 0;
-    let mut r: usize = 0;
-    let mut g: usize = width * height;
-    let mut b: usize = width * height * 2;
-    while r < width * height {
-        data_buf[i] = temp_buf[r];
-        data_buf[i + 1] = temp_buf[g];
-        data_buf[i + 2] = temp_buf[b];
-        i += 3; r += 1; g += 1; b += 1;
+    let r = &temp_buf[0..width * height];
+    let g = &temp_buf[width * height..2*width * height];
+    let b = &temp_buf[2*width * height..];
+
+    // Zip all the iterators into tuples
+    let zipped = r.iter().zip(g).zip(b);
+    for ((r, g), b) in zipped {
+        data_buf[i] = *r;
+        data_buf[i + 1] = *g;
+        data_buf[i + 2] = *b;
+        i += 3;
     }
 
+    // Get file and make a buffered writer
     let path = Path::new("output_images/turtle.png");
     let file = File::create(path).unwrap();
     let ref mut w = BufWriter::new(file);
 
+    // Write only image size as specified in the header info
     let encoder = png::Encoder::with_info(w, header.clone())?;
     let mut writer = encoder.write_header().unwrap();
     writer.write_image_data(&data_buf[..width * height * 3]);
-    // writer.write_image_data(&data[0..data.len()-1]);
 
     Ok(())
 }
