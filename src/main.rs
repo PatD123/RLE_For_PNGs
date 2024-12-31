@@ -1,6 +1,8 @@
 use std::fs::File;
 use std::io::Write;
 use std::io::Read;
+use std::path::Path;
+use std::io::BufWriter;
 use std::env;
 use std::io;
 
@@ -173,13 +175,15 @@ fn decompress(header: &png::Info) -> io::Result<()>{
     println!("HEADER : {:?}", meta_buf);
 
     // Decompressing RLE encoding @ byte 33
-    let max_size = header.width as usize * header.height as usize * 3 * 3; // * 3 for RGB * 3 for RLE for all 0
+    let width: usize = header.width as usize;
+    let height: usize = header.height as usize;
+    let max_size = width * height * 3 * 3; // * 3 for RGB * 3 for RLE for all 0
     let mut data_buf = vec![0; max_size];
     // Read into data_buf
     let num_bytes = file.read(&mut data_buf)?;
 
     println!("NUM_BYTES: {}", num_bytes);
-    
+
     // Starting decompression
     let mut temp_buf = Vec::new();
     let mut i = 0;
@@ -206,12 +210,25 @@ fn decompress(header: &png::Info) -> io::Result<()>{
         }
     }
 
-    println!("{}", temp_buf.len());
+    // Merge all RGB values again
+    let mut i: usize = 0;
+    let mut r: usize = 0;
+    let mut g: usize = width * height;
+    let mut b: usize = width * height * 2;
+    while r < width * height {
+        data_buf[i] = temp_buf[r];
+        data_buf[i + 1] = temp_buf[g];
+        data_buf[i + 2] = temp_buf[b];
+        i += 3; r += 1; g += 1; b += 1;
+    }
 
+    let path = Path::new("output_images/turtle.png");
+    let file = File::create(path).unwrap();
+    let ref mut w = BufWriter::new(file);
 
-    // let encoder = png::Encoder::with_info(w, img_info)?;
-    // let mut writer = encoder.write_header().unwrap();
-    // writer.write_image_data(data);
+    let encoder = png::Encoder::with_info(w, header.clone())?;
+    let mut writer = encoder.write_header().unwrap();
+    writer.write_image_data(&data_buf[..width * height * 3]);
     // writer.write_image_data(&data[0..data.len()-1]);
 
     Ok(())
