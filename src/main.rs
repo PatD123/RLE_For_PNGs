@@ -5,6 +5,7 @@ use std::path::Path;
 use std::io::BufWriter;
 use std::env;
 use std::io;
+use std::process;
 
 mod utils;
 
@@ -62,21 +63,31 @@ fn pngrle(img_info: png::Info, data: &[u8]) -> Result<(), png::EncodingError>{
     Ok(())
 }
 
+struct Config {
+    func: String,
+    filename: String,
+}
 
-// TODO
-// Seems like with the commented code very below, we can decode a png, extract all the metadata and the idat chunks
-// then encode them again to get a valid PNG. However, we can't rewrite all the metadata, and then not write all of
-// our data, and still manage to use the decoder.read_info() function.
+impl Config {
+    fn build(args: &[String]) -> Result<Config, &str> {
+        if args.len() < 3 {
+            return Err("NOT ENOUGH ARGUMENTS");
+        }
 
-// Best soln I have is to write all the headers into a temp file with everything the same except the IDAT chunks.
-// The new IDAT chunks should reflect RLE. 
-// To re-encode the file, we open the temp file, expand all the rle's and write into a new png file.
-fn main() {
+        let func = args[1].clone();
+        let filename = args[2].clone();
 
-    // DECOMPRESSION HERE!!!!
-    test();
-    return;
+        Ok(
+            Config {
+                func: func,
+                filename: filename,
+            }
+        )
+    }
+}
 
+fn run(config: Config) {
+    
     // Decode the png
     let mut decoder = png::Decoder::new(File::open("test_images/turtle.png").unwrap());
     let mut reader = decoder.read_info().unwrap();
@@ -102,6 +113,26 @@ fn main() {
 
     // Compression and RLE here.
     pngrle(info, bytes);
+}
+
+fn main() {
+
+    let args: Vec<String> = env::args().collect();
+
+    let config = Config::build(&args).unwrap_or_else(|err| {
+        println!("Problem parsing arguments: {err}");
+        process::exit(1);
+    });
+
+    run(config);
+
+    // TODO
+    // - Turn into a CLI tool
+    //      - PNG to PPM
+    //      - PNG to RLE
+    //      - RLE to PNG
+    // - Add command line arguments
+    // - Refactor and modularize code
 }
 
 fn test() {
