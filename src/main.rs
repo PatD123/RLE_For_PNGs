@@ -7,7 +7,7 @@ use std::env;
 use std::io;
 use std::process;
 
-mod utils;
+use image_compression::Config;
 
 fn write_to_pnle(mut file: &File, val: u8, cnt: usize){
     let cnt = cnt as u8;
@@ -31,9 +31,9 @@ fn write_to_pnle(mut file: &File, val: u8, cnt: usize){
     }
 }
 
-fn pngrle(img_info: png::Info, data: &[u8]) -> Result<(), png::EncodingError>{
+fn pngrle(img_info: png::Info, data: &[u8], config: Config) -> Result<(), png::EncodingError>{
     // Rewrite to a new .pnle (for png rle)!
-    let mut file = File::options().append(true).open("output_images/turtle.pnle").unwrap();
+    let mut file = File::options().append(true).open(&config.output_filename).unwrap();
 
     // RLE Here
     let n: usize = img_info.height as usize;
@@ -63,56 +63,46 @@ fn pngrle(img_info: png::Info, data: &[u8]) -> Result<(), png::EncodingError>{
     Ok(())
 }
 
-struct Config {
-    func: String,
-    filename: String,
-}
-
-impl Config {
-    fn build(args: &[String]) -> Result<Config, &str> {
-        if args.len() < 3 {
-            return Err("NOT ENOUGH ARGUMENTS");
-        }
-
-        let func = args[1].clone();
-        let filename = args[2].clone();
-
-        Ok(
-            Config {
-                func: func,
-                filename: filename,
-            }
-        )
-    }
-}
-
-fn run(config: Config) {
-    
-    // Decode the png
-    let mut decoder = png::Decoder::new(File::open("test_images/turtle.png").unwrap());
-    let mut reader = decoder.read_info().unwrap();
-
-    // Get all the RGB(A) bytes
+fn get_png_bytes(mut reader: png::Reader<File>) -> Vec<u8> {
+    // Get all the RGB bytes
     let mut buf = vec![0; reader.output_buffer_size()];
     let frame = reader.next_frame(&mut buf).unwrap();
     let bytes = &buf[..frame.buffer_size()];
-    let info = reader.info().clone();
 
-    // To make a new .pnle, I need all the IHDR bytes (8 + 4 + 4 + 13 + 4)
-    let mut buf = [0; 33];
-    let f = File::open("test_images/turtle.png").unwrap();
-    let mut handle = f.take(33);
-    match handle.read(&mut buf) {
-        Ok(_) => println!("{:?}", buf),
-        Err(e) => println!("Error"),
-    };
+    bytes.to_vec()
+}
 
-    // Write PNG header bytes into .pnle
-    let mut file = File::options().create(true).write(true).open("output_images/turtle.pnle").unwrap();
-    file.write(&buf);
+fn run(config: Config) {
+    if config.func == "pngrle" {
+        // Decode the png
+        let mut decoder = png::Decoder::new(File::open(&config.input_filename).unwrap());
+        let mut reader = decoder.read_info().unwrap();
 
-    // Compression and RLE here.
-    pngrle(info, bytes);
+        let info = reader.info().clone();
+        let bytes = get_png_bytes(reader);
+
+        // To make a new .pnle, we need all the IHDR bytes (8 + 4 + 4 + 13 + 4)
+        let mut meta_buf = [0; 33];
+        let mut f = File::open(&config.input_filename).unwrap();
+        f.read(&mut meta_buf);
+
+        // Write PNG header bytes into .pnle
+        let mut file = File::options().create(true).write(true).open(&config.output_filename).unwrap();
+        file.write(&meta_buf);
+
+        // Compression and RLE here.
+        pngrle(info, &bytes, config);
+    }
+    else if config.func == "depngrle" {
+        test(config);
+    }
+    else if config.func == "ppmconvert" {
+
+    }
+    else {
+        println!("Not an option");
+    }
+    return;
 }
 
 fn main() {
@@ -125,27 +115,19 @@ fn main() {
     });
 
     run(config);
-
-    // TODO
-    // - Turn into a CLI tool
-    //      - PNG to PPM
-    //      - PNG to RLE
-    //      - RLE to PNG
-    // - Add command line arguments
-    // - Refactor and modularize code
 }
 
-fn test() {
+fn test(config: Config) {
     // env::set_var("RUST_BACKTRACE", "full");
-    let mut decoder = png::Decoder::new(File::open("output_images/turtle.pnle").unwrap());
+    let mut decoder = png::Decoder::new(File::open(&config.input_filename).unwrap());
     let mut header = decoder.read_header_info().unwrap();
 
     // Testing decompression
-    decompress(header);
+    decompress(config, header);
 }
 
-fn decompress(header: &png::Info) -> io::Result<()>{
-    let mut file = File::open("output_images/turtle.pnle").unwrap();
+fn decompress(config: Config, header: &png::Info) -> io::Result<()>{
+    let mut file = File::open(config.input_filename).unwrap();
 
     // Get metadata first
     let mut meta_buf = [0; 33];
@@ -205,8 +187,7 @@ fn decompress(header: &png::Info) -> io::Result<()>{
     }
 
     // Get file and make a buffered writer
-    let path = Path::new("output_images/turtle.png");
-    let file = File::create(path).unwrap();
+    let file = File::create(config.output_filename).unwrap();
     let ref mut w = BufWriter::new(file);
 
     // Write only image size as specified in the header info
